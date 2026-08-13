@@ -1,7 +1,8 @@
-import type { UserTable } from "./tables/users.js";
+import type { TaskTable, UserTable } from "./tables/index.js";
 
 export interface Database {
-  users: UserTable;
+  user: UserTable;
+  task: TaskTable;
 }
 
-export * from "./tables/users.js";
+export type * from "./tables/index.js";
