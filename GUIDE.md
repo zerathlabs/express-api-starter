@@ -1,6 +1,6 @@
 # Developer Guide & Architecture
 
-Welcome to the Express SaaS Starter. This starter is designed for building fast, type-safe, and scalable backend services for SaaS products using **Feature-Based (Modular / Vertical Slice) Architecture**.
+Welcome to the Express SaaS Starter. This starter is designed for building fast, type-safe, and scalable backend services for SaaS products using **Feature-Based (Modular / Vertical Slice) Architecture** and **Kysely** for type-safe database access.
 
 ---
 
@@ -11,6 +11,11 @@ src/
 ├── app.ts                  # Express application setup & middleware
 ├── index.ts                # Server entry point (app.listen)
 ├── env.ts                  # Type-safe environment variables (Zod + T3-Env)
+├── db/                     # Type-safe Database layer (Kysely)
+│   ├── index.ts            # Kysely client & connection pool
+│   ├── types.ts            # Generated/typed Database schema interfaces
+│   ├── migrator.ts         # Migration CLI runner
+│   └── migrations/         # Migration scripts (001_initial_schema.ts, etc.)
 ├── modules/
 │   ├── index.ts            # Central API aggregator (mounted at /api)
 │   └── health/             # Example Feature Module
@@ -24,9 +29,80 @@ src/
 
 ---
 
+## 🗄️ Database Layer (Kysely)
+
+### Why Kysely?
+- **Zero Binary Overhead**: Pure TypeScript query builder without heavy engines.
+- **100% Type-Safe**: Table names, columns, join conditions, and return types are fully checked by TypeScript.
+- **PostgreSQL & Oracle Ready**: Built for PostgreSQL by default, with seamless dialect swapping for Oracle DB (`kysely-oracledb`).
+
+### Database Queries in Services
+Import `db` from `@/db/index.js` inside your `service.ts`:
+
+```ts
+import { db } from "@/db/index.js";
+import type { UserModel } from "./model.js";
+
+export abstract class UserService {
+  static async findById(id: string): Promise<UserModel["userResponse"] | null> {
+    const user = await db
+      .selectFrom("users")
+      .selectAll()
+      .where("id", "=", id)
+      .executeTakeFirst();
+
+    return user ?? null;
+  }
+
+  static async create(data: UserModel["createBody"]) {
+    return await db
+      .insertInto("users")
+      .values({
+        id: crypto.randomUUID(),
+        name: data.name,
+        email: data.email,
+      })
+      .returningAll()
+      .executeTakeFirstOrThrow();
+  }
+}
+```
+
+### Running Migrations
+- Apply all pending migrations:
+  ```bash
+  pnpm run db:migrate
+  ```
+- Roll back the latest migration:
+  ```bash
+  pnpm run db:migrate:down
+  ```
+
+### Creating New Migrations
+Create a timestamped or numbered file in `src/db/migrations/`:
+```ts
+import { type Kysely, sql } from "kysely";
+
+export async function up(db: Kysely<unknown>): Promise<void> {
+  await db.schema
+    .createTable("projects")
+    .addColumn("id", "text", (col) => col.primaryKey())
+    .addColumn("name", "varchar(255)", (col) => col.notNull())
+    .addColumn("owner_id", "text", (col) => col.references("users.id").onDelete("cascade"))
+    .addColumn("created_at", "timestamp", (col) => col.defaultTo(sql`CURRENT_TIMESTAMP`).notNull())
+    .execute();
+}
+
+export async function down(db: Kysely<unknown>): Promise<void> {
+  await db.schema.dropTable("projects").execute();
+}
+```
+
+---
+
 ## 🧩 The 3-File Module Pattern
 
-Every feature or domain in your application (e.g., `auth`, `users`, `billing`, `projects`, `organizations`) lives in its own folder inside `src/modules/<feature-name>/` with exactly 3 files:
+Every feature or domain in your application lives in `src/modules/<feature-name>/`:
 
 ```
 src/modules/<feature>/
@@ -36,25 +112,20 @@ src/modules/<feature>/
 ```
 
 ### 1. `model.ts` — Data Contracts & Types
-Define all input validation schemas and response structures using Zod. We export a single `FeatureModel` object alongside an auto-mapped TypeScript type:
+Define all input validation schemas and response structures using Zod:
 
 ```ts
 import { z } from "zod";
 
 export const ProjectModel = {
-  // Request body schema for creation
   createBody: z.object({
     name: z.string().min(2).max(50),
     description: z.string().optional(),
   }),
-
-  // Query parameter schema
   listQuery: z.object({
     page: z.coerce.number().default(1),
     limit: z.coerce.number().default(10),
   }),
-
-  // Response shape
   projectResponse: z.object({
     id: z.string(),
     name: z.string(),
@@ -63,44 +134,39 @@ export const ProjectModel = {
   }),
 } as const;
 
-// Automatically map all Zod schemas into TypeScript types
 export type ProjectModel = {
   [K in keyof typeof ProjectModel]: z.infer<(typeof ProjectModel)[K]>;
 };
 ```
 
 ### 2. `service.ts` — Business Logic
-Encapsulate all business logic, database queries, and external API calls inside an `abstract class` with `static` methods. 
-
-> **Why `abstract class`?**
-> - Cannot be mistakenly instantiated (`new ProjectService()` is forbidden).
-> - Zero memory allocation overhead.
-> - Keeps functions organized in a clean domain namespace (`ProjectService.create()`).
+Encapsulate all business logic inside an `abstract class` with `static` methods:
 
 ```ts
+import { db } from "@/db/index.js";
 import type { ProjectModel } from "./model.js";
 
 export abstract class ProjectService {
   static async create(input: ProjectModel["createBody"]): Promise<ProjectModel["projectResponse"]> {
-    // Perform database operations (e.g., db.insert(...) / prisma.project.create(...))
-    return {
-      id: "proj_123",
-      name: input.name,
-      description: input.description ?? null,
-      createdAt: new Date().toISOString(),
-    };
-  }
+    const project = await db
+      .insertInto("projects")
+      .values({
+        id: crypto.randomUUID(),
+        name: input.name,
+      })
+      .returningAll()
+      .executeTakeFirstOrThrow();
 
-  static async list(query: ProjectModel["listQuery"]) {
-    // Query database with pagination
-    return [];
+    return {
+      ...project,
+      description: null,
+      createdAt: project.created_at.toISOString(),
+    };
   }
 }
 ```
 
 ### 3. `index.ts` — Express Router & Controllers
-Attach your routes, apply validation middleware, and call the service. Keep route handlers thin — they should only receive requests, validate, delegate to the service, and return responses.
-
 ```ts
 import { Router } from "express";
 import { validate } from "@/utils/validator/index.js";
@@ -110,7 +176,6 @@ import { ProjectService } from "./service.js";
 
 const router = Router();
 
-// POST /api/projects
 router.post(
   "/",
   validate({ body: ProjectModel.createBody }),
@@ -120,143 +185,15 @@ router.post(
   }
 );
 
-// GET /api/projects
-router.get(
-  "/",
-  validate({ query: ProjectModel.listQuery }),
-  async (req, res) => {
-    const projects = await ProjectService.list(req.query);
-    return sendSuccess(res, projects);
-  }
-);
-
 export const projectRouter = router;
 ```
 
 ---
 
-## 🚀 How to Add a New Feature (Step-by-Step)
-
-Let's say you want to add a new `users` module:
-
-1. **Create the module folder**:
-   ```
-   src/modules/users/
-   ├── model.ts
-   ├── service.ts
-   └── index.ts
-   ```
-
-2. **Define schemas in `model.ts`**:
-   ```ts
-   import { z } from "zod";
-
-   export const UserModel = {
-     createBody: z.object({
-       email: z.string().email(),
-       name: z.string(),
-     }),
-     userResponse: z.object({
-       id: z.string(),
-       email: z.string(),
-       name: z.string(),
-     }),
-   } as const;
-
-   export type UserModel = {
-     [K in keyof typeof UserModel]: z.infer<(typeof UserModel)[K]>;
-   };
-   ```
-
-3. **Implement business logic in `service.ts`**:
-   ```ts
-   import type { UserModel } from "./model.js";
-
-   export abstract class UserService {
-     static async create(data: UserModel["createBody"]): Promise<UserModel["userResponse"]> {
-       return { id: "usr_1", ...data };
-     }
-   }
-   ```
-
-4. **Expose routes in `index.ts`**:
-   ```ts
-   import { Router } from "express";
-   import { validate } from "@/utils/validator/index.js";
-   import { sendSuccess } from "@/utils/response/index.js";
-   import { UserModel } from "./model.js";
-   import { UserService } from "./service.js";
-
-   const router = Router();
-
-   router.post("/", validate({ body: UserModel.createBody }), async (req, res) => {
-     const user = await UserService.create(req.body);
-     return sendSuccess(res, user, 201);
-   });
-
-   export const userRouter = router;
-   ```
-
-5. **Register in `src/modules/index.ts`**:
-   ```ts
-   import { Router } from "express";
-   import { healthRouter } from "./health/index.js";
-   import { userRouter } from "./users/index.js";
-
-   export const apiRouter = Router();
-
-   apiRouter.use("/health", healthRouter);
-   apiRouter.use("/users", userRouter); // -> Available at /api/users
-   ```
-
----
-
 ## 🛠️ Utilities
 
-### `validate({ body, query, params })`
-Located in `src/utils/validator/index.ts`. Automatically validates incoming request payloads against Zod schemas and returns a standardized `400 Bad Request` with errors if validation fails.
-
-### `sendSuccess(res, data, statusCode?)` & `sendError(res, message, statusCode?)`
-Located in `src/utils/response/index.ts`. Ensures consistent JSON response structures across all endpoints:
-
-```json
-// Success Response
-{
-  "success": true,
-  "data": { ... }
-}
-
-// Error Response
-{
-  "success": false,
-  "error": {
-    "message": "Invalid credentials"
-  }
-}
-```
-
----
-
-## ⚙️ Environment Variables
-
-All environment variables are validated at startup in [src/env.ts](file:///c:/Users/i7/Documents/purple/starter/src/env.ts).
-
-To add a new variable (e.g., `DATABASE_URL`):
-1. Add it to `.env` and `.env.example`:
-   ```bash
-   DATABASE_URL="postgresql://user:password@localhost:5432/saas_db"
-   ```
-2. Add schema to `src/env.ts`:
-   ```ts
-   export const env = createEnv({
-     server: {
-       CORS_ORIGIN: z.string().url().default("http://localhost:3001"),
-       DATABASE_URL: z.string().min(1),
-       NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
-     },
-     runtimeEnv: process.env,
-   });
-   ```
+- `validate({ body, query, params })`: Automatic Zod validation middleware.
+- `sendSuccess(res, data, statusCode?)` & `sendError(res, message, statusCode?)`: Standardized JSON response formatting.
 
 ---
 
@@ -269,3 +206,5 @@ To add a new variable (e.g., `DATABASE_URL`):
 | `pnpm run start` | Run production build (`node dist/index.mjs`) |
 | `pnpm run check-types` | Typecheck codebase with TypeScript compiler (`tsc --noEmit`) |
 | `pnpm run check` | Format and lint code with Biome (`biome check --write .`) |
+| `pnpm run db:migrate` | Apply all pending database migrations |
+| `pnpm run db:migrate:down` | Roll back the last database migration |
