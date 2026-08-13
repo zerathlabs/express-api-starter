@@ -10,7 +10,8 @@
 		"check": "biome check --write .",
 		"compile": "bun build --compile --minify --sourcemap --bytecode ./src/index.ts --outfile server",
 		"db:migrate": "tsx src/db/migrator.ts latest",
-		"db:migrate:down": "tsx src/db/migrator.ts down"
+		"db:migrate:down": "tsx src/db/migrator.ts down",
+		"db:seed": "tsx src/db/seed.ts"
 	},
 	"dependencies": {
 		"@t3-oss/env-core": "^0.13.11",

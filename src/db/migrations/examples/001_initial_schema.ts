@@ -1,3 +1,7 @@
+/*
+ * EXAMPLE: Kysely TypeScript Migration Pattern
+ * You can reference this example if you ever want to write migrations using Kysely's TS Schema Builder.
+ */
 import { type Kysely, sql } from "kysely";
 
 export async function up(db: Kysely<unknown>): Promise<void> {
