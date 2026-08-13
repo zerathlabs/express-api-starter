@@ -2,7 +2,7 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { FileMigrationProvider, Migrator } from "kysely";
-import { Logger } from "../utils/logger/index.js";
+import { Logger } from "@/utils/logger/index.js";
 import { db } from "./index.js";
 
 const __filename = fileURLToPath(import.meta.url);
