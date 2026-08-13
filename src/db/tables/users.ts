@@ -1,17 +1,17 @@
 import type {
-	ColumnType,
-	Generated,
-	Insertable,
-	Selectable,
-	Updateable,
+  ColumnType,
+  Generated,
+  Insertable,
+  Selectable,
+  Updateable,
 } from "kysely";
 
 export interface UserTable {
-	id: Generated<string>;
-	name: string;
-	email: string;
-	created_at: ColumnType<Date, string | undefined, never>;
-	updated_at: ColumnType<Date, string | undefined, string | undefined>;
+  id: Generated<string>;
+  name: string;
+  email: string;
+  created_at: ColumnType<Date, string | undefined, never>;
+  updated_at: ColumnType<Date, string | undefined, string | undefined>;
 }
 
 export type User = Selectable<UserTable>;

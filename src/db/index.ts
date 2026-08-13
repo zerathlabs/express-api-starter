@@ -5,9 +5,9 @@ import type { Database } from "./types.js";
 
 // PostgreSQL Dialect (Default)
 const dialect = new PostgresDialect({
-	pool: new Pool({
-		connectionString: env.DATABASE_URL,
-	}),
+  pool: new Pool({
+    connectionString: env.DATABASE_URL,
+  }),
 });
 
 /*
@@ -28,5 +28,5 @@ const dialect = new PostgresDialect({
  */
 
 export const db = new Kysely<Database>({
-	dialect,
+  dialect,
 });
