@@ -3,8 +3,9 @@ import { evlog } from "evlog/express";
 import { createFsDrain } from "evlog/fs";
 import express from "express";
 import { env } from "./env.js";
+import { errorHandler } from "./middlewares/error.js";
+import { notFoundHandler } from "./middlewares/not-found.js";
 import { apiRouter } from "./modules/index.js";
-import { sendError } from "./utils/response/index.js";
 import "./utils/logger/index.js";
 
 export const app = express();
@@ -33,6 +34,7 @@ app.get("/", (_req, res) => {
 app.use("/api", apiRouter);
 
 // Fallback 404 Not Found handler for unmatched routes
-app.use((_req, res) => {
-  return sendError(res, "Route not found", 404);
-});
+app.use(notFoundHandler);
+
+// Global Error-Handling Middleware Boundary
+app.use(errorHandler);
