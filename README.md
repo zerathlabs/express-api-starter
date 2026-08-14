@@ -1,6 +1,6 @@
 # Express SaaS Starter
 
-A high-performance, type-safe, and modular Express starter template designed for modern SaaS products. Built with TypeScript, Kysely, Zod, tsdown, Biome, and evlog.
+A high-performance, type-safe, and modular Express starter template designed for modern SaaS products. Built with TypeScript, Kysely, Zod, tsdown, Biome, Vitest, and evlog.
 
 ## 📖 Architecture & Developer Guide
 
@@ -48,13 +48,14 @@ src/
 │   └── migrations/         # Migration scripts
 ├── modules/
 │   ├── index.ts            # Central API router aggregator (/api)
-│   └── health/             # Standard Feature Module (Example)
-│       ├── model.ts        # Zod schemas & TypeScript types
-│       ├── service.ts      # Abstract class with static business logic
-│       └── index.ts        # Express Router & controllers
+│   ├── health/             # System health check module (with health.http)
+│   ├── task/               # Standard Task CRUD module (with task.http)
+│   └── tables/             # Database metadata & schema inspector (with tables.http)
 └── utils/
+    ├── logger/             # Standardized structured logger (evlog wrapper)
     ├── response/           # Standardized API response helpers (sendSuccess / sendError)
-    └── validator/          # Type-safe Zod validation middleware (body, query, params)
+    ├── validator/          # Type-safe Zod validation middleware (body, query, params)
+    └── network.ts          # Local network IPv4 discovery utility
 ```
 
 ---
@@ -64,6 +65,8 @@ src/
 - `pnpm run dev`: Start dev server with watch mode (`tsx`)
 - `pnpm run build`: Bundle the server to `dist/` (`tsdown`)
 - `pnpm run start`: Run production build with `node`
+- `pnpm run test`: Run unit and integration test suite (`vitest`)
+- `pnpm run test:watch`: Run test suite in watch mode (`vitest`)
 - `pnpm run check-types`: Run TypeScript compiler type-check (`tsc`)
 - `pnpm run check`: Check and format code with Biome
 - `pnpm run db:migrate`: Run pending database migrations

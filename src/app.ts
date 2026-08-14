@@ -4,6 +4,7 @@ import { createFsDrain } from "evlog/fs";
 import express from "express";
 import { env } from "./env.js";
 import { apiRouter } from "./modules/index.js";
+import { sendError } from "./utils/response/index.js";
 import "./utils/logger/index.js";
 
 export const app = express();
@@ -30,3 +31,8 @@ app.get("/", (_req, res) => {
 
 // Mount modular API routes
 app.use("/api", apiRouter);
+
+// Fallback 404 Not Found handler for unmatched routes
+app.use((_req, res) => {
+  return sendError(res, "Route not found", 404);
+});

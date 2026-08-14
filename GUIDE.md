@@ -185,6 +185,7 @@ export const taskRouter = router;
 | `docker compose up -d` | Launch local PostgreSQL container |
 | `pnpm run dev` | Start dev server with watch mode (`tsx`) |
 | `pnpm run build` | Build bundle for production (`tsdown`) |
+| `pnpm run test` | Run unit and integration tests (`vitest`) |
 | `pnpm run check-types` | Typecheck codebase (`tsc --noEmit`) |
 | `pnpm run check` | Format and lint code (`biome check --write .`) |
 | `pnpm run db:migrate` | Run database migrations |
