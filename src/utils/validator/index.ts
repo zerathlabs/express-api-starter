@@ -1,5 +1,8 @@
 import type { NextFunction, Request, Response } from "express";
-import type { ZodType } from "zod";
+import { ZodError, type ZodType } from "zod";
+import { sendError } from "../response/index.js";
+
+export * from "./schemas.js";
 
 type ValidationSchemas = {
   body?: ZodType;
@@ -7,6 +10,13 @@ type ValidationSchemas = {
   params?: ZodType;
 };
 
+/**
+ * Express middleware for validating request body, query, and params using Zod schemas.
+ * Automatically parses request properties and returns a 400 Bad Request on validation failure.
+ *
+ * @example
+ * router.post("/", validate({ body: TaskModel.createBody }), (req, res) => { ... });
+ */
 export function validate(schemas: ValidationSchemas) {
   return async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -25,10 +35,16 @@ export function validate(schemas: ValidationSchemas) {
       }
       next();
     } catch (error) {
-      res.status(400).json({
-        success: false,
-        error,
-      });
+      if (error instanceof ZodError) {
+        return res.status(400).json({
+          success: false,
+          error: {
+            message: "Validation Error",
+            issues: error.issues,
+          },
+        });
+      }
+      return sendError(res, "Validation Error", 400);
     }
   };
 }
