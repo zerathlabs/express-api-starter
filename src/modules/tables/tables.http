@@ -1,0 +1,24 @@
+# Tables & Database Metadata API Requests
+# Note: In production mode (NODE_ENV=production), these routes return 404 Route not found.
+
+@host = http://localhost:3000/api
+
+### 1. Get Overall Database & Tables Summary
+GET {{host}}/tables/summary
+Accept: application/json
+
+### 2. List All Tables (All User Base Tables)
+GET {{host}}/tables
+Accept: application/json
+
+### 3. Search Tables by Name Filter (?search=task)
+GET {{host}}/tables?search=task
+Accept: application/json
+
+### 4. Get Table Details & Schema (Columns, Data Types, Primary Keys)
+GET {{host}}/tables/task
+Accept: application/json
+
+### 5. Fetch Paginated Records from Table (Page 1, Limit 10, Sorted)
+GET {{host}}/tables/task/data?page=1&limit=10&sort_by=created_at&order=desc
+Accept: application/json

@@ -1,0 +1,7 @@
+# Health Module API Requests
+
+@host = http://localhost:3000/api
+
+### Check System Health & Uptime
+GET {{host}}/health
+Accept: application/json

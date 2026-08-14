@@ -1,0 +1,34 @@
+# Task Module API Requests
+
+@host = http://localhost:3000/api
+@taskId = REPLACE_WITH_TASK_ID
+
+### 1. List All Tasks
+GET {{host}}/task
+Accept: application/json
+
+### 2. Create a New Task
+POST {{host}}/task
+Content-Type: application/json
+
+{
+  "title": "Build REST API Starter",
+  "description": "Implement feature-based modular architecture and database metadata inspection"
+}
+
+### 3. Get Task by ID
+GET {{host}}/task/{{taskId}}
+Accept: application/json
+
+### 4. Update Task Status
+PATCH {{host}}/task/{{taskId}}
+Content-Type: application/json
+
+{
+  "status": "in_progress",
+  "title": "Build REST API Starter (In Progress)"
+}
+
+### 5. Delete Task
+DELETE {{host}}/task/{{taskId}}
+Accept: application/json
