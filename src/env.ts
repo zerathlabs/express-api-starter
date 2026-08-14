@@ -9,9 +9,11 @@ export const env = createEnv({
       .string()
       .min(1)
       .default("postgresql://postgres:postgres@localhost:5432/starter_db"),
+    HOST: z.string().default("0.0.0.0"),
     NODE_ENV: z
       .enum(["development", "production", "test"])
       .default("development"),
+    PORT: z.coerce.number().default(3000),
   },
   runtimeEnv: process.env,
   skipValidation: !!process.env.SKIP_ENV_VALIDATION,
